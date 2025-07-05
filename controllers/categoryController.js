@@ -30,3 +30,27 @@ exports.getCategories = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+exports.addCategory = async (req, res) => {
+    try {
+        const requestBody = req.body;
+
+        if (!Array.isArray(requestBody) || requestBody.length === 0) {
+            return res.status(400).json({ error: 'Invalid request body' });
+        }
+
+        const converted = requestBody.map(item => ({
+            name: TextConvert.convertToUnicodeEscape(item.name),
+            child: (item.child || []).map(c => ({
+                name: TextConvert.convertToUnicodeEscape(c.name)
+            }))
+        }));
+
+        const inserted = await Category.addCategoriesBatch(converted);
+        return res.status(201).json({ success: true, data: inserted });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error', detail: err.message });
+    }
+};
