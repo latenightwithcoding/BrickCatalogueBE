@@ -5,7 +5,7 @@ const auth = require('../middlewares/auth');
 
 /**
  * @swagger
- * /api/category:
+ * /api/category/all:
  *   get:
  *     summary: Lấy danh sách danh mục
  *     tags: [Category]
@@ -13,7 +13,7 @@ const auth = require('../middlewares/auth');
  *       200:
  *         description: Danh sách danh mục
  */
-router.get('/', categoryController.getCategories);
+router.get('/all', categoryController.getCategories);
 
 /**
  * @swagger
