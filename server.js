@@ -12,11 +12,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(cors());
 
-// Hoặc cấu hình cụ thể:
+// ✅ Cấu hình CORS đúng cách
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://demo.xuanhuong.buubuu.id.vn',
+    'http://localhost:3000',
+];
+
 app.use(cors({
-    origin: 'http://localhost:5173', // hoặc domain frontend của bạn
+    origin: function (origin, callback) {
+        // Cho phép nếu không có origin (như Postman) hoặc nằm trong danh sách
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
 }));
