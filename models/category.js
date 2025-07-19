@@ -20,6 +20,12 @@ async function addCategoriesBatch(rawCategories) {
         const inserted = [];
         const warnings = [];
 
+        const getMaxIndexRequest = new sql.Request(transaction);
+        const maxIndexResult = await getMaxIndexRequest.query(
+            `SELECT ISNULL(MAX([Index]), 0) AS LastIndex FROM Categories WHERE ParentId IS NULL`
+        );
+        let currentParentIndex = maxIndexResult.recordset[0].LastIndex;
+
         for (let i = 0; i < rawCategories.length; i++) {
             const item = rawCategories[i];
             const parentName = item.name;
@@ -34,19 +40,21 @@ async function addCategoriesBatch(rawCategories) {
                 parentId = checkResult.recordset[0].Id;
             } else {
                 parentId = uuidv4();
+                currentParentIndex += 1; // Tăng chỉ số danh mục cha
+
                 const insertParentRequest = new sql.Request(transaction);
                 await insertParentRequest
                     .input('Id', sql.UniqueIdentifier, parentId)
                     .input('Name', sql.NVarChar(300), parentName)
                     .input('ParentId', sql.UniqueIdentifier, null)
-                    .input('Index', sql.Int, i)
+                    .input('Index', sql.Int, currentParentIndex)
                     .query(`INSERT INTO Categories (Id, Name, ParentId, [Index]) VALUES (@Id, @Name, @ParentId, @Index)`);
 
                 inserted.push({
                     id: parentId,
                     name: TextConvert.convertFromUnicodeEscape(parentName),
                     parentId: null,
-                    index: i
+                    index: currentParentIndex
                 });
             }
 
