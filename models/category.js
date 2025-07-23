@@ -104,5 +104,15 @@ async function addCategoriesBatch(rawCategories) {
     }
 }
 
+async function getCategory(id) {
+    await poolConnect;
+    const request = pool.request();
+    request.input('Id', sql.UniqueIdentifier, id);
+    const result = await request.query('SELECT * FROM Categories WHERE Id = @Id');
+    return {
+        id: result.recordset[0].Id,
+        name: TextConvert.convertFromUnicodeEscape(result.recordset[0].Name),
+    };
+}
 
-module.exports = { getCategories, addCategoriesBatch };
+module.exports = { getCategories, addCategoriesBatch, getCategory };

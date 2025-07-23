@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const Product = require('../models/product');
 const ProductAttachment = require('../models/productAttachment');
 const TextConvert = require('../utilities/textConvert');
+const Category = require('../models/category');
 require('dotenv').config();
 
 exports.createProduct = async (req, res) => {
@@ -55,7 +56,14 @@ exports.getProducts = async (req, res) => {
         const { categoryId, name } = req.query;
 
         const products = await Product.getProducts({ categoryId });
-        return res.status(200).json({ success: true, data: products });
+        const category = await Category.getCategory(categoryId);
+        return res.status(200).json({
+            success: true, data: {
+                id: category.id,
+                name: TextConvert.convertFromUnicodeEscape(category.name),
+                products: products
+            }
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error', detail: err.message });

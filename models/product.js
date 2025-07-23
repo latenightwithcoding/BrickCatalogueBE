@@ -59,9 +59,9 @@ async function getProducts({ categoryId }) {
     //     images: p.images ? JSON.parse(p.images).map(img => img.AttachmentURL) : []
     // }));
     const products = result.recordset.map(p => ({
-        Id: p.Id,
-        SKU: p.SKU,
-        Images: p.images
+        id: p.Id,
+        sku: p.SKU,
+        images: p.images
             ? JSON.parse(p.images).map(img => img.AttachmentURL)
             : []
     }));
