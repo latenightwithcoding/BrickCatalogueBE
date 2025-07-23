@@ -11,15 +11,29 @@ const swaggerSpec = require('./swagger');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(cors());
+// Allow multiple CORS origins
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://demo.xuanhuong.buubuu.id.vn',
+    'https://api.xuanhuong.buubuu.id.vn',
+];
 
-// Hoặc cấu hình cụ thể:
+app.use(express.json());
+
 app.use(cors({
-    origin: 'http://localhost:5173', // hoặc domain frontend của bạn
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin) || origin === 'null') {
+            callback(null, true);
+        } else {
+            console.error('Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
 }));
+
 
 // Swagger
 app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

@@ -47,4 +47,30 @@ router.post(
     productController.createProduct
 );
 
+/**
+ * @swagger
+ * /api/product:
+ *   get:
+ *     summary: Lấy danh sách sản phẩm theo điều kiện lọc
+ *     tags: [Product]
+ *     parameters:
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: string
+ *         description: ID danh mục
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Tên sản phẩm
+ *     responses:
+ *       200:
+ *         description: Danh sách sản phẩm
+ */
+router.get(
+    '/',
+    productController.getProducts
+);
+
 module.exports = router;

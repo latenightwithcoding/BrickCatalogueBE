@@ -25,4 +25,50 @@ async function addProduct(productData) {
     return result.recordset[0];
 }
 
-module.exports = { addProduct };
+async function getProducts({ categoryId }) {
+    await pool.connect();
+
+    let query = `
+        SELECT 
+            p.*, 
+            (
+                SELECT AttachmentURL
+                FROM ProductAttachments a
+                WHERE a.productId = p.id
+                FOR JSON PATH
+            ) AS images
+        FROM Products p
+        WHERE 1=1
+    `;
+
+    if (categoryId) {
+        query += ` AND p.categoryId = @categoryId`;
+    }
+
+    const request = pool.request();
+
+    if (categoryId) {
+        request.input('categoryId', sql.UniqueIdentifier, categoryId);
+    }
+
+    const result = await request.query(query);
+
+    // Parse JSON from `images` column
+    // const products = result.recordset.map(p => ({
+    //     ...p,
+    //     images: p.images ? JSON.parse(p.images).map(img => img.AttachmentURL) : []
+    // }));
+    const products = result.recordset.map(p => ({
+        Id: p.Id,
+        SKU: p.SKU,
+        Images: p.images
+            ? JSON.parse(p.images).map(img => img.AttachmentURL)
+            : []
+    }));
+
+    return products;
+}
+
+
+
+module.exports = { addProduct, getProducts };

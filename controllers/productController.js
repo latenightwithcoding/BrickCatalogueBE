@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const Product = require('../models/product');
 const ProductAttachment = require('../models/productAttachment');
 const TextConvert = require('../utilities/textConvert');
+require('dotenv').config();
 
 exports.createProduct = async (req, res) => {
     try {
@@ -12,7 +13,7 @@ exports.createProduct = async (req, res) => {
             return res.status(400).json({ error: 'Invalid request body' });
         }
 
-        const imageUrls = files.map((file) => `/uploads/${file.filename}`);
+        const imageUrls = files.map((file) => `${process.env.URL_UPLOAD}/${file.filename}`);
         const createdAt = new Date(Date.now() + 7 * 60 * 60 * 1000);
 
         const productData = {
@@ -48,3 +49,15 @@ exports.createProduct = async (req, res) => {
         res.status(500).json({ error: 'Internal server error', detail: err.message });
     }
 }
+
+exports.getProducts = async (req, res) => {
+    try {
+        const { categoryId, name } = req.query;
+
+        const products = await Product.getProducts({ categoryId });
+        return res.status(200).json({ success: true, data: products });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error', detail: err.message });
+    }
+};
