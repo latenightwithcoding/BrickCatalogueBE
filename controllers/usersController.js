@@ -53,8 +53,14 @@ exports.login = async (req, res) => {
         if (!Auth.verifyPasswordHashed(password, user.Salt, user.Password)) {
             throw new Error('Sai mật khẩu');
         }
-        const token = Auth.generateJWT(user);
-        res.json({ token });
+        var userData = {
+            id: user.Id,
+            username: user.Username,
+            name: TextConvert.convertFromUnicodeEscape(user.Name),
+            createdAt: user.CreatedAt,
+            token: Auth.generateJWT(user),
+        };
+        res.json({ userData });
     } catch (err) {
         res.status(401).json({ error: err.message });
     }

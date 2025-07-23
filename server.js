@@ -11,19 +11,19 @@ const swaggerSpec = require('./swagger');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Allow multiple CORS origins
+app.use(express.json());
+
+// ✅ Cấu hình CORS đúng cách
 const allowedOrigins = [
     'http://localhost:5173',
-    'http://127.0.0.1:5173',
     'https://demo.xuanhuong.buubuu.id.vn',
-    'https://api.xuanhuong.buubuu.id.vn',
+    'http://localhost:3000',
 ];
-
-app.use(express.json());
 
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin) || origin === 'null') {
+        // Cho phép nếu không có origin (như Postman) hoặc nằm trong danh sách
+        if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
             console.error('Blocked by CORS:', origin);
