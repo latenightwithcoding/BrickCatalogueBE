@@ -37,19 +37,14 @@ const TextConvert = {
     convertToUnSign: (s) => {
         if (!s) return s;
 
-        const normalized = s.normalize('NFD');
-        let result = '';
-        for (let char of normalized) {
-            const charCode = char.charCodeAt(0);
-            const unicodeCategory = require('unicode-category');
-            if (unicodeCategory.getCategory(charCode) !== 'Mn') {
-                result += char;
-            }
-        }
+        let result = s.normalize('NFD') // Tách dấu tiếng Việt
+            .replace(/[\u0300-\u036f]/g, '') // Loại bỏ các ký tự dấu
+            .replace(/Đ/g, 'D')
+            .replace(/đ/g, 'd')
+            .replace(/\s+/g, ' ') // Gộp nhiều khoảng trắng thành một
+            .replace(/[^a-zA-Z0-9\s\-]/g, ''); // Giữ lại khoảng trắng, chữ, số và dấu gạch ngang
 
-        result = result.replace(/Đ/g, 'D').replace(/đ/g, 'd');
-        result = result.replace(/\s+/g, '-');
-        return result.normalize('NFC');
+        return result;
     }
 };
 

@@ -1,3 +1,4 @@
+const TextConvert = require('../utilities/textConvert');
 const { sql, pool, poolConnect } = require('./db');
 
 async function addProduct(productData) {
@@ -14,11 +15,12 @@ async function addProduct(productData) {
         .input('CategoryId', sql.UniqueIdentifier, productData.categoryId)
         .input('CreatedAt', sql.DateTime, productData.createdAt)
         .input('Size', sql.VarChar(200), productData.size)
-        .input('SizeUnit', sql.VarChar(10), productData.sizeUnit);
+        .input('SizeUnit', sql.VarChar(10), productData.sizeUnit)
+        .input('UnsignName', sql.NVarChar(300), productData.unsignName);
 
     const result = await request.query(`
-        INSERT INTO Products (Id, Name, SKU, Description, Status, CategoryId, CreatedAt, Size, SizeUnit)
-        VALUES (@Id, @Name, @SKU, @Description, @Status, @CategoryId, @CreatedAt, @Size, @SizeUnit)
+        INSERT INTO Products (Id, Name, SKU, Description, Status, CategoryId, CreatedAt, Size, SizeUnit, UnsignName)
+        VALUES (@Id, @Name, @SKU, @Description, @Status, @CategoryId, @CreatedAt, @Size, @SizeUnit, @UnsignName)
         SELECT * FROM Products WHERE Id = @Id
     `);
 
@@ -69,6 +71,106 @@ async function getProducts({ categoryId }) {
     return products;
 }
 
+async function getProduct(productId) {
+    await poolConnect;
 
+    const request = new sql.Request(pool);
+    request.input('productId', sql.UniqueIdentifier, productId);
 
-module.exports = { addProduct, getProducts };
+    const result = await request.query(`
+        SELECT 
+            p.Id, p.Name, p.Description, p.SKU, p.Size, p.SizeUnit,
+            c.Id AS CategoryId,
+            c.Name AS CategoryName,
+            (
+                SELECT AttachmentURL
+                FROM ProductAttachments a
+                WHERE a.ProductId = p.Id
+                FOR JSON PATH
+            ) AS images,
+            (
+                SELECT 
+                    rp.Id, rp.SKU,
+                    (
+                        SELECT AttachmentURL
+                        FROM ProductAttachments pa
+                        WHERE pa.ProductId = rp.Id
+                        FOR JSON PATH
+                    ) AS images
+                FROM Products rp
+                WHERE rp.CategoryId = p.CategoryId AND rp.Id != p.Id
+                ORDER BY rp.CreatedAt DESC
+                OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY
+                FOR JSON PATH
+            ) AS relatedProducts
+        FROM Products p
+        LEFT JOIN Categories c ON p.CategoryId = c.Id
+        WHERE p.Id = @productId
+    `);
+
+    if (result.recordset.length === 0) {
+        throw new Error('Product not found');
+    }
+
+    const product = result.recordset[0];
+
+    return {
+        id: product.Id,
+        name: TextConvert.convertFromUnicodeEscape(product.Name),
+        description: TextConvert.convertFromUnicodeEscape(product.Description),
+        sku: product.SKU,
+        size: product.Size,
+        sizeUnit: product.SizeUnit,
+        category: {
+            id: product.CategoryId,
+            name: TextConvert.convertFromUnicodeEscape(product.CategoryName),
+        },
+        images: product.images ? JSON.parse(product.images).map(img => img.AttachmentURL) : [],
+        relatedProducts: product.relatedProducts
+            ? JSON.parse(product.relatedProducts).map(p => ({
+                id: p.Id,
+                sku: p.SKU,
+                images: p.images ? p.images.map(img => img.AttachmentURL) : [],
+            }))
+            : [],
+    };
+}
+
+async function getProductsForAdmin({ search = '', page = 1, pageSize = 10 }) {
+    await poolConnect;
+
+    const request = new sql.Request(pool);
+
+    const offset = (page - 1) * pageSize;
+
+    request.input('search', sql.VarChar, `%${TextConvert.convertToUnSign(search)}%`);
+    request.input('pageSize', sql.Int, pageSize);
+    request.input('offset', sql.Int, offset);
+
+    const result = await request.query(`
+        SELECT 
+            p.Id, p.Name, p.SKU, p.Description, p.Size, p.SizeUnit,
+            c.Id AS CategoryId,
+            c.Name AS CategoryName
+        FROM Products p
+        LEFT JOIN Categories c ON p.CategoryId = c.Id
+        WHERE (@search = '' OR p.UnsignName LIKE @search OR p.SKU LIKE @search)
+        ORDER BY p.CreatedAt DESC
+        OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;
+    `);
+
+    return result.recordset.map(p => ({
+        id: p.Id,
+        name: TextConvert.convertFromUnicodeEscape(p.Name),
+        sku: p.SKU,
+        description: TextConvert.convertFromUnicodeEscape(p.Description),
+        size: p.Size,
+        sizeUnit: p.SizeUnit,
+        category: {
+            id: p.CategoryId,
+            name: TextConvert.convertFromUnicodeEscape(p.CategoryName),
+        },
+    }));
+}
+
+module.exports = { addProduct, getProducts, getProduct, getProductsForAdmin };

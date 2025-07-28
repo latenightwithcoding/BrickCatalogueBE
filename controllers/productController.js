@@ -16,6 +16,7 @@ exports.createProduct = async (req, res) => {
 
         const imageUrls = files.map((file) => `${process.env.URL_UPLOAD}/${file.filename}`);
         const createdAt = new Date(Date.now() + 7 * 60 * 60 * 1000);
+        const unsignName = TextConvert.convertToUnSign(requestBody.name);
 
         const productData = {
             id: uuidv4(),
@@ -26,6 +27,7 @@ exports.createProduct = async (req, res) => {
             sizeUnit: requestBody.sizeUnit,
             status: true,
             categoryId: requestBody.categoryId,
+            unsignName: unsignName,
             createdAt,
         };
 
@@ -69,3 +71,38 @@ exports.getProducts = async (req, res) => {
         res.status(500).json({ error: 'Internal server error', detail: err.message });
     }
 };
+
+exports.getProduct = async (req, res) => {
+    try {
+        const { id } = req.params; // ✅ Sửa từ 'productId' thành 'id'
+
+        if (!id) {
+            return res.status(400).json({ error: 'Product ID is required' });
+        }
+
+        const product = await Product.getProduct(id);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+
+        // const attachments = await ProductAttachment.getProductAttachments(id);
+        // product.attachments = attachments;
+
+        return res.status(200).json({ success: true, data: product });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error', detail: err.message });
+    }
+}
+
+exports.getProductsForAdmin = async (req, res) => {
+    try {
+        const { keyword, page, pageSize } = req.query;
+        const products = await Product.getProductsForAdmin({ search: keyword, page, pageSize });
+        return res.status(200).json({ success: true, data: products });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error', detail: err.message });
+    }
+};
+

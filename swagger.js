@@ -10,7 +10,10 @@ const options = {
         },
         servers: [
             {
-                url: process.env.DEPLOYMENT === 'production' ? process.env.DEPLOY_URL : process.env.DEV_URL,
+                url: process.env.DEPLOYMENT === 'production'
+                    ? process.env.DEPLOY_URL
+                    : process.env.DEV_URL
+                    || 'http://localhost:3000',
             },
         ],
         components: {

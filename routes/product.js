@@ -2,6 +2,7 @@ const uploadImage = require('../middlewares/uploadImage');
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
+const authMiddleware = require('../middlewares/auth');
 
 /**
  * @swagger
@@ -59,6 +60,7 @@ router.post(
  *         schema:
  *           type: string
  *         description: ID danh mục
+ *         required: true
  *       - in: query
  *         name: name
  *         schema:
@@ -71,6 +73,61 @@ router.post(
 router.get(
     '/',
     productController.getProducts
+);
+
+/**
+ * @swagger
+ * /api/product/admin:
+ *   get:
+ *     summary: Lấy danh sách sản phẩm cho quản trị viên
+ *     tags: [Product]
+ *     parameters:
+ *       - in: query
+ *         name: keyword
+ *         schema:
+ *           type: string
+ *         description: Từ khóa tìm kiếm
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Số trang
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *         description: Số lượng sản phẩm trên mỗi trang
+ *     responses:
+ *       200:
+ *         description: Danh sách sản phẩm
+ */
+router.get(
+    '/admin',
+    productController.getProductsForAdmin
+);
+
+/**
+ * @swagger
+ * /api/product/{id}:
+ *   get:
+ *     summary: Lấy thông tin chi tiết sản phẩm theo ID
+ *     tags: [Product]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của sản phẩm
+ *     responses:
+ *       200:
+ *         description: Thông tin chi tiết sản phẩm
+ *       404:
+ *         description: Không tìm thấy sản phẩm
+ */
+router.get(
+    '/:id',
+    productController.getProduct
 );
 
 module.exports = router;
