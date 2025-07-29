@@ -151,7 +151,12 @@ async function getProductsForAdmin({ search = '', page = 1, pageSize = 10 }) {
         SELECT 
             p.Id, p.Name, p.SKU, p.Description, p.Size, p.SizeUnit,
             c.Id AS CategoryId,
-            c.Name AS CategoryName
+            c.Name AS CategoryName, (
+                SELECT AttachmentURL
+                FROM ProductAttachments a
+                WHERE a.ProductId = p.Id
+                FOR JSON PATH
+            ) AS images
         FROM Products p
         LEFT JOIN Categories c ON p.CategoryId = c.Id
         WHERE (@search = '' OR p.UnsignName LIKE @search OR p.SKU LIKE @search)
@@ -170,6 +175,7 @@ async function getProductsForAdmin({ search = '', page = 1, pageSize = 10 }) {
             id: p.CategoryId,
             name: TextConvert.convertFromUnicodeEscape(p.CategoryName),
         },
+        images: p.images ? JSON.parse(p.images).map(img => img.AttachmentURL) : []
     }));
 }
 
