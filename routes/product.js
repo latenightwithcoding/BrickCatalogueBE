@@ -103,6 +103,7 @@ router.get(
  */
 router.get(
     '/admin',
+    authMiddleware,
     productController.getProductsForAdmin
 );
 
