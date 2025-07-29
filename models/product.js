@@ -142,12 +142,14 @@ async function getProductsForAdmin({ search = '', page = 1, pageSize = 10 }) {
     const request = new sql.Request(pool);
 
     const offset = (page - 1) * pageSize;
+    const searchKeyword = `%${TextConvert.convertToUnSign(search)}%`;
 
-    request.input('search', sql.VarChar, `%${TextConvert.convertToUnSign(search)}%`);
+    request.input('search', sql.VarChar, searchKeyword);
     request.input('pageSize', sql.Int, pageSize);
     request.input('offset', sql.Int, offset);
 
-    const result = await request.query(`
+    // Truy vấn chính
+    const dataResult = await request.query(`
         SELECT 
             p.Id, p.Name, p.SKU, p.Description, p.Size, p.SizeUnit,
             c.Id AS CategoryId,
@@ -164,19 +166,38 @@ async function getProductsForAdmin({ search = '', page = 1, pageSize = 10 }) {
         OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;
     `);
 
-    return result.recordset.map(p => ({
-        id: p.Id,
-        name: TextConvert.convertFromUnicodeEscape(p.Name),
-        sku: p.SKU,
-        description: TextConvert.convertFromUnicodeEscape(p.Description),
-        size: p.Size,
-        sizeUnit: p.SizeUnit,
-        category: {
-            id: p.CategoryId,
-            name: TextConvert.convertFromUnicodeEscape(p.CategoryName),
-        },
-        images: p.images ? JSON.parse(p.images).map(img => img.AttachmentURL) : []
-    }));
+    // Truy vấn đếm tổng số bản ghi
+    const countRequest = new sql.Request(pool);
+    countRequest.input('search', sql.VarChar, searchKeyword);
+
+    const countResult = await countRequest.query(`
+        SELECT COUNT(*) AS total
+        FROM Products p
+        WHERE (@search = '' OR p.UnsignName LIKE @search OR p.SKU LIKE @search);
+    `);
+
+    const totalItems = countResult.recordset[0].total;
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    return {
+        page,
+        totalPages,
+        totalItems,
+        items: dataResult.recordset.map(p => ({
+            id: p.Id,
+            name: TextConvert.convertFromUnicodeEscape(p.Name),
+            sku: p.SKU,
+            description: TextConvert.convertFromUnicodeEscape(p.Description),
+            size: p.Size,
+            sizeUnit: p.SizeUnit,
+            category: {
+                id: p.CategoryId,
+                name: TextConvert.convertFromUnicodeEscape(p.CategoryName),
+            },
+            images: p.images ? JSON.parse(p.images).map(img => img.AttachmentURL) : []
+        }))
+    };
 }
+
 
 module.exports = { addProduct, getProducts, getProduct, getProductsForAdmin };
