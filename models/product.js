@@ -27,6 +27,42 @@ async function addProduct(productData) {
     return result.recordset[0];
 }
 
+async function updateProduct(productId, productData) {
+    await poolConnect;
+
+    const request = new sql.Request(pool);
+
+    request
+        .input('Id', sql.UniqueIdentifier, productId)
+        .input('Name', sql.NVarChar(300), productData.name)
+        .input('SKU', sql.NVarChar(100), productData.sku)
+        .input('Description', sql.NVarChar(sql.MAX), productData.description || '')
+        .input('Status', sql.Bit, productData.status)
+        .input('CategoryId', sql.UniqueIdentifier, productData.categoryId)
+        .input('Size', sql.VarChar(200), productData.size)
+        .input('SizeUnit', sql.VarChar(10), productData.sizeUnit)
+        .input('UnsignName', sql.NVarChar(300), productData.unsignName);
+
+    const result = await request.query(`
+        UPDATE Products
+        SET
+            Name = @Name,
+            SKU = @SKU,
+            Description = @Description,
+            Status = @Status,
+            CategoryId = @CategoryId,
+            Size = @Size,
+            SizeUnit = @SizeUnit,
+            UnsignName = @UnsignName
+        WHERE Id = @Id
+
+        SELECT * FROM Products WHERE Id = @Id
+    `);
+
+    return result.recordset[0];
+}
+
+
 async function getProducts({ categoryId }) {
     await pool.connect();
 
@@ -71,6 +107,61 @@ async function getProducts({ categoryId }) {
     return products;
 }
 
+async function getProductForAdmin(productId) {
+    await poolConnect;
+
+    const request = new sql.Request(pool);
+    request.input('productId', sql.UniqueIdentifier, productId);
+
+    const result = await request.query(`
+        SELECT 
+            p.Id, p.Name, p.Description, p.SKU, p.Size, p.SizeUnit,
+
+            c.Id AS CategoryId,
+            c.Name AS CategoryName,
+            c.ParentId AS ParentCategoryId,
+
+            pc.Name AS ParentCategoryName,
+
+            (
+                SELECT AttachmentURL
+                FROM ProductAttachments a
+                WHERE a.ProductId = p.Id
+                FOR JSON PATH
+            ) AS images
+        FROM Products p
+        LEFT JOIN Categories c ON p.CategoryId = c.Id
+        LEFT JOIN Categories pc ON c.ParentId = pc.Id
+        WHERE p.Id = @productId
+    `);
+
+    if (result.recordset.length === 0) {
+        return null;
+    }
+
+    const product = result.recordset[0];
+
+    return {
+        id: product.Id,
+        name: TextConvert.convertFromUnicodeEscape(product.Name),
+        description: TextConvert.convertFromUnicodeEscape(product.Description),
+        sku: product.SKU,
+        size: product.Size,
+        sizeUnit: product.SizeUnit,
+        category: {
+            id: product.CategoryId,
+            name: TextConvert.convertFromUnicodeEscape(product.CategoryName),
+            parent: product.ParentCategoryId
+                ? {
+                    id: product.ParentCategoryId,
+                    name: TextConvert.convertFromUnicodeEscape(product.ParentCategoryName),
+                }
+                : null
+        },
+        images: product.images ? JSON.parse(product.images).map(img => img.AttachmentURL) : []
+    };
+}
+
 async function getProduct(productId) {
     await poolConnect;
 
@@ -109,7 +200,7 @@ async function getProduct(productId) {
     `);
 
     if (result.recordset.length === 0) {
-        throw new Error('Product not found');
+        return null;
     }
 
     const product = result.recordset[0];
@@ -199,5 +290,19 @@ async function getProductsForAdmin({ search = '', page = 1, pageSize = 10 }) {
     };
 }
 
+async function deleteProduct(productId) {
+    await poolConnect;
 
-module.exports = { addProduct, getProducts, getProduct, getProductsForAdmin };
+    const request = new sql.Request(pool);
+    request.input('productId', sql.UniqueIdentifier, productId);
+
+    const result = await request.query(`
+        DELETE FROM Products
+        WHERE Id = @productId;
+        SELECT @@ROWCOUNT AS rowsAffected;
+    `);
+
+    return result.recordset[0].rowsAffected > 0;
+}
+
+module.exports = { addProduct, getProducts, getProduct, getProductsForAdmin, getProductForAdmin, updateProduct, deleteProduct };

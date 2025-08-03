@@ -18,6 +18,7 @@ const allowedOrigins = [
     'http://localhost:5173',
     'https://demo.xuanhuong.buubuu.id.vn',
     'http://localhost:3000',
+    'https://vlxdxuanhuong.com'
 ];
 
 app.use(cors({

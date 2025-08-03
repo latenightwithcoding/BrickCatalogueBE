@@ -38,4 +38,43 @@ async function addProductImages(imagesData) {
     }
 }
 
-module.exports = { addProductImages };
+async function getImagesByProductId(productId) {
+    await poolConnect;
+
+    try {
+        const request = new sql.Request(pool);
+        request.input('ProductId', sql.UniqueIdentifier, productId);
+
+        const result = await request.query(`
+            SELECT * FROM ProductAttachments
+            WHERE ProductId = @ProductId
+        `);
+
+        return result.recordset;
+    } catch (err) {
+        console.error("Error fetching product images:", err);
+        throw err;
+    }
+}
+
+async function deleteImagesByProductId(productId) {
+    await poolConnect;
+
+    try {
+        const request = new sql.Request(pool);
+        request.input('ProductId', sql.UniqueIdentifier, productId);
+
+        const result = await request.query(`
+            DELETE FROM ProductAttachments
+            WHERE ProductId = @ProductId
+        `);
+
+        return result.rowsAffected[0]; // số lượng ảnh đã xoá
+    } catch (err) {
+        console.error("Error deleting product images:", err);
+        throw err;
+    }
+}
+
+
+module.exports = { addProductImages, getImagesByProductId, deleteImagesByProductId };
